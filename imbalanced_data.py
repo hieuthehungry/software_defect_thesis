@@ -40,7 +40,7 @@ def loadDatasetsCreditCard():
     # print(data['Class'].value_counts())
     y = data['Class']
     X = data.drop('Class', axis=1)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
     # describes info about train and test set
     # printDatasetInfo(X_train,y_train,X_test,y_test)
     return X_train,y_train,X_test,y_test
@@ -143,6 +143,20 @@ def Boosting(X_train,y_train,X_test,y_test):
     clf_disp = plot_roc_curve(eec, X_test, y_test)
     clf_disp.figure_.suptitle("ROC curve comparison")    
     plt.show()
+def RUSBoost(X_train,y_train,X_test,y_test):		
+    from imblearn.ensemble import RUSBoostClassifier
+	
+    clf = RUSBoostClassifier(n_estimators=15)
+    clf.fit(X_train, y_train)  
+    predictions=clf.predict(X_test)
+    print(classification_report(y_test,predictions))
+    print(confusion_matrix(y_test, predictions))
+    print("AUC Score: ",roc_auc_score(y_test,predictions))
+    print("balanced_accuracy_score: ",balanced_accuracy_score(y_test,predictions))
+    clf_disp = plot_roc_curve(clf, X_test, y_test)
+    clf_disp.figure_.suptitle("ROC curve comparison")    
+    plt.show()
+
 def Stacking(X_train,y_train,X_test,y_test):		
     from sklearn.ensemble import StackingClassifier
     from sklearn.tree import DecisionTreeClassifier
@@ -191,7 +205,6 @@ def DecisionTree(X_train,y_train,X_test,y_test):
     predictions = tree.predict(X_test)
     print(classification_report(y_test, predictions))
     print(confusion_matrix(y_test, predictions))
-    print(confusion_matrix(y_test, predictions))
     print("AUC Score: ",roc_auc_score(y_test,predictions))
     print("balanced_accuracy_score: ",balanced_accuracy_score(y_test,predictions))
     clf_disp = plot_roc_curve(tree, X_test, y_test)
@@ -226,6 +239,15 @@ def algorithmApplySMOTE(X_train,y_train,X_test,y_test):
     X_train_res,y_train_res=sm.fit_sample(X_train,y_train)
     # printDatasetInfoAfter(X_train_res, y_train_res)
     algorithmApply(X_train_res, y_train_res,X_test,y_test)
+def algorithmApplyADASYN(X_train,y_train,X_test,y_test):
+    from imblearn.over_sampling import ADASYN 
+
+    # print("Before OverSampling, counts of label '1': {}".format(sum(y_train == 1)))
+    # print("Before OverSampling, counts of label '-1': {} \n".format(sum(y_train == -1)))
+    ada = ADASYN(random_state=42,n_neighbors=50)
+    X_train_res,y_train_res=ada.fit_sample(X_train,y_train)
+    # printDatasetInfoAfter(X_train_res, y_train_res)
+    algorithmApply(X_train_res, y_train_res,X_test,y_test)   
 def algorithmApplyBagging(X_train,y_train,X_test,y_test):
     from sklearn.tree import DecisionTreeClassifier
     from imblearn.ensemble import BalancedBaggingClassifier
@@ -268,10 +290,10 @@ def algorithmApplyKmeansSMOTE(X_train,y_train,X_test,y_test):
     # pip install imblearn (if you don't have imblearn in your system)
     kmeans_smote = KMeansSMOTE(
         kmeans_args={
-             'n_clusters': 150
+             'n_clusters': 100
          },
          smote_args={
-             'k_neighbors': 21
+             'k_neighbors': 13
          }
     )
     X_train_res,y_train_res=kmeans_smote.fit_sample(X_train,y_train)
@@ -289,8 +311,9 @@ def algorithmApply(X_train,y_train,X_test,y_test):
     # GradientBoostingClassifier(X_train, y_train, X_test, y_test)
     # ForestClassifier(X_train,y_train,X_test,y_test)
     # Bagging(X_train,y_train,X_test,y_test)
-    Boosting(X_train,y_train,X_test,y_test)
-    # Stacking(X_train,y_train,X_test,y_test)
+    # Boosting(X_train,y_train,X_test,y_test)
+    # RUSBoost(X_train,y_train,X_test,y_test)
+    Stacking(X_train,y_train,X_test,y_test)
     # XGBClassifier(X_train,y_train,X_test,y_test)
 # data = '..\data\imbalanced_data\oil.csv'
 data = 'pc1.csv'
@@ -305,12 +328,15 @@ printDatasetInfo(X_train,y_train,X_test,y_test)
 printDatasetInfoAfter(X_train,y_train)
 print('Algorithm without overshampling:')
 algorithmApply(X_train,y_train,X_test,y_test)
-#print('SMOTE:')
-#algorithmApplySMOTE(X_train,y_train,X_test,y_test)
+print('SMOTE:')
+algorithmApplySMOTE(X_train,y_train,X_test,y_test)
 # print('logisticRegessionNearMiss:')
 # algorithmApplyNearMiss(X_train,y_train,X_test,y_test)
-#print('KmeansSMOTE:')
-#algorithmApplyKmeansSMOTE(X_train,y_train,X_test,y_test)
+print('KmeansSMOTE:')
+algorithmApplyKmeansSMOTE(X_train,y_train,X_test,y_test)
+
+print('ADASYN:')
+algorithmApplyADASYN(X_train,y_train,X_test,y_test)
 
 #print('Bagging:')
 #algorithmApplyBagging(X_train,y_train,X_test,y_test)
