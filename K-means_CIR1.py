@@ -8,28 +8,20 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.model_selection import KFold
 
+
 def loadDatasets(data):
     data = pd.read_csv(data)
     y = data[data.columns[-1]]
     X = data[data.columns[:-1]]
     return X, y
 
-def ApplyAlgorithmn(D, X, y, n, irt, kfold, minority, majority, model, type):
-    # Innit data
-    accuracy = 0
-    precision = 0
-    recall = 0
-    f1score = 0
+def imbalance_learn(X_train, y_train, model, minority, majority):
 
-    # KFold
-    kf = KFold(n_splits=kfold, random_state=42)
-    for train_index, test_index in kf.split(X):
-        D_train = D.iloc[train_index, :]
-        X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
-        y_train, y_test = y[train_index], y[test_index]
+        D_train = np.hstack([X_train, y_train.values.reshape(len(y_train),-1)])
         if type == 'SMOTE':
             from imblearn.over_sampling import SMOTE
             sm = SMOTE()
+
             X_train, y_train = sm.fit_resample(X_train, y_train)
         elif type == 'KmeansSMOTE':
             from imblearn.over_sampling import KMeansSMOTE
@@ -41,11 +33,33 @@ def ApplyAlgorithmn(D, X, y, n, irt, kfold, minority, majority, model, type):
             kmeans, k = ApplyKmean(D_train)
             X_train, y_train = KmeansCIR(D_train, n, irt, minority, majority, kmeans, k)
         model.fit(X_train, y_train)
+        return model
+
+def ApplyAlgorithmn(D, X, y, n, irt, kfold, minority, majority, model, type):
+    # Innit data
+    
+    accuracy = 0
+    precision = 0
+    recall = 0
+    f1score = 0
+
+    # KFold
+    # add shuffle = True to avoid error
+    kf = KFold(n_splits=kfold, random_state=42, shuffle = True)
+    for train_index, test_index in kf.split(X):
+
+        X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
+        y_train, y_test = y[train_index], y[test_index]
+
+        model = imbalance_learn(X_train, y_train, model, minority, majority)
+
         predictions = model.predict(X_test)
         accuracy += accuracy_score(y_test, predictions)
-        precision += precision_score(y_test, predictions, average='weighted')
-        recall += recall_score(y_test, predictions, average='weighted')
-        f1score += f1_score(y_test, predictions, average='weighted')
+        precision += precision_score(y_test, predictions)
+        recall += recall_score(y_test, predictions)
+        f1score += f1_score(y_test, predictions)
+        
+
     accuracy /= kfold
     precision /= kfold
     recall /= kfold
@@ -53,7 +67,8 @@ def ApplyAlgorithmn(D, X, y, n, irt, kfold, minority, majority, model, type):
     print('accuracy: {0}, precision: {1}, recall: {2}, f1_score: {3}'.format(accuracy,
                                                                              precision,
                                                                              recall,
-                                                                             f1score))
+                                                                             f1score
+                                                                             ))
 
 def CIR(D_train, minority, majority):
     Do = D_train.iloc[np.where(D_train[D_train.columns[-1]] == minority)]
@@ -190,50 +205,61 @@ def SelectModel(algorithm):
         model = KNeighborsClassifier()
     return model
 
-#file_name = '..\..\data\imbalanced_data\imbalanced-learn\_abalone.csv'
-# file_name = '..\..\data\imbalanced_data\imbalanced-learn\ecoli.csv'
-# file_name = '..\..\data\imbalanced_data\imbalanced-learn\letter_img.csv'
-# file_name = '..\..\data\imbalanced_data\imbalanced-learn\oil.csv'
-#file_name = '..\..\data\imbalanced_data\imbalanced-learn\optical_digits.csv'
-# file_name = '..\..\data\imbalanced_data\imbalanced-learn\pen_digits.csv'
-# file_name = '..\..\data\imbalanced_data\imbalanced-learn\satimage.csv'
-#file_name = '..\..\data\imbalanced_data\imbalanced-learn\wine_quality.csv'
-file_name = 'software_defect.csv'
-print('file_name: {0}'.format(file_name))
 
-data = pd.read_csv(file_name)
-y = data[data.columns[-1]]
-X = data[data.columns[:-1]]
+if __name__ == "__main__":
+    #file_name = '..\..\data\imbalanced_data\imbalanced-learn\_abalone.csv'
+    # file_name = '..\..\data\imbalanced_data\imbalanced-learn\ecoli.csv'
+    # file_name = '..\..\data\imbalanced_data\imbalanced-learn\letter_img.csv'
+    # file_name = '..\..\data\imbalanced_data\imbalanced-learn\oil.csv'
+    #file_name = '..\..\data\imbalanced_data\imbalanced-learn\optical_digits.csv'
+    # file_name = '..\..\data\imbalanced_data\imbalanced-learn\pen_digits.csv'
+    # file_name = '..\..\data\imbalanced_data\imbalanced-learn\satimage.csv'
+    #file_name = '..\..\data\imbalanced_data\imbalanced-learn\wine_quality.csv'
+    
+    
+    
+    file_name = 'data/thesis_data/pc1.csv'
 
-minority = 1 # value of label minority
-majority = -1 # value of label majority
-kfold = 5 # number of kfold
+    
 
-listOfAlgorithm = ['LogisticRegession', 'RandomForest', 'NaiveBayes', 'DecisionTree', 'SVM', 'KNN']
-listOfOverSample = ['Normal', 'SMOTE', 'KmeansSMOTE', 'CIR', 'Kmeans_CIR']
-algorithmUse = listOfAlgorithm[1]
-print('algorithmUse: {0}'.format(algorithmUse))
+    print('file_name: {0}'.format(file_name))
 
-print('Normal: ')
-ApplyAlgorithmn(data, X, y, 0, 0, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[0])
+    data = pd.read_csv(file_name)
 
-print('SMOTE: ')
-ApplyAlgorithmn(data, X, y, 0, 0, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[1])
+    y = data[data.columns[-1]]
+    X = data[data.columns[:-1]]
 
-# print('KmeansSMOTE: ')
-# ApplyAlgorithmn(file_name, list_n, list_irt, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[2])
+    minority = 1 # value of label minority
+    majority = -1 # value of label majority
+    kfold = 5 # number of kfold
 
-print('CIR: ')
-ApplyAlgorithmn(data, X, y, 0, 0, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[3])
+    listOfAlgorithm = ['LogisticRegession', 'RandomForest', 'NaiveBayes', 'DecisionTree', 'SVM', 'KNN']
+    listOfOverSample = ['Normal', 'SMOTE', 'KmeansSMOTE', 'CIR', 'Kmeans_CIR']
+    algorithmUse = listOfAlgorithm[1]
+    
+    
+    print('algorithmUse: {0}'.format(algorithmUse))
 
-print('Kmeans_CIR: ')
-list_n = [5, 10, 20, 40, 80] # coefficient of the number of minority created
-list_irt = [1, 2, 4, 8, 16] # coefficient of the number of minority created
-ration = math.floor(y[y == majority].count() / y[y == minority].count())
-for i in range(len(list_n)):
-    for j in range(len(list_irt)):
-        n =  list_n[i] * ration
-        irt = list_irt[j] * ration
-        print('n: {0}, irt: {1}'.format(n, irt))
-        ApplyAlgorithmn(data, X, y, n, irt, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[4])
+    print('Normal: ')
+    ApplyAlgorithmn(data, X, y, 0, 0, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[0])
+
+    print('SMOTE: ')
+    ApplyAlgorithmn(data, X, y, 0, 0, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[1])
+
+    # print('KmeansSMOTE: ')
+    # ApplyAlgorithmn(file_name, list_n, list_irt, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[2])
+
+    print('CIR: ')
+    ApplyAlgorithmn(data, X, y, 0, 0, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[3])
+
+    print('Kmeans_CIR: ')
+    list_n = [5, 10, 20, 40, 80] # coefficient of the number of minority created
+    list_irt = [1, 2, 4, 8, 16] # coefficient of the number of minority created
+    ration = math.floor(y[y == majority].count() / y[y == minority].count())
+    for i in range(len(list_n)):
+        for j in range(len(list_irt)):
+            n =  list_n[i] * ration
+            irt = list_irt[j] * ration
+            print('n: {0}, irt: {1}'.format(n, irt))
+            ApplyAlgorithmn(data, X, y, n, irt, kfold, minority, majority, SelectModel(algorithmUse), listOfOverSample[4])
 
